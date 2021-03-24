@@ -40,6 +40,10 @@ class GeneSequencing:
 # your code should replace these three statements and populate the three variables: 
 # score, alignment1 and alignment2
 		 
+
+
+		 #this if statement will tell us whether to run
+		 #an unbanded or banded algorithm
 		if not bool(banded):
 			EMPTY = '-'
 			row = len(seq1) 
