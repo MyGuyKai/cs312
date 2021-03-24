@@ -1,0 +1,362 @@
+#!/usr/bin/python3
+
+from which_pyqt import PYQT_VER
+if PYQT_VER == 'PYQT5':
+	from PyQt5.QtCore import QLineF, QPointF
+elif PYQT_VER == 'PYQT4':
+	from PyQt4.QtCore import QLineF, QPointF
+else:
+	raise Exception('Unsupported Version of PyQt: {}'.format(PYQT_VER))
+
+import math
+import time
+import random
+
+
+# Used to compute the bandwidth for banded version
+MAXINDELS = 3
+
+# Used to implement Needleman-Wunsch scoring
+MATCH = -3
+INDEL = 5
+SUB = 1
+
+
+class GeneSequencing:
+
+	def __init__( self ):
+		pass
+	
+# This is the method called by the GUI.  _seq1_ and _seq2_ are two sequences to be aligned, _banded_ is a boolean that tells
+# you whether you should compute a banded alignment or full alignment, and _align_length_ tells you 
+# how many base pairs to use in computing the alignment
+
+
+	def align( self, seq1, seq2, banded, align_length):
+		self.banded = banded
+		self.MaxCharactersToAlign = align_length
+
+###################################################################################################
+# your code should replace these three statements and populate the three variables: 
+# score, alignment1 and alignment2
+		 
+		if not bool(banded):
+			EMPTY = '-'
+			row = len(seq1) 
+			column = len(seq2) 
+			currRow = 0
+			currColumn = 0
+			leftDirection = 'l'
+			upDirection = 'u'
+			diagonalDirection = 'd'
+			x = 0
+			y = 0
+			pathi = ''
+			pathj = ''
+			fixAlignment = 0
+			newSeq1 = ''
+			newSeq2 = ''
+						
+			#these if elif statements are going to check for our alignment length
+			if ((len(seq1) > align_length) & (len(seq2) > align_length)):
+				while fixAlignment < align_length:
+					newSeq1 = newSeq1 + seq1[fixAlignment]
+					fixAlignment = fixAlignment + 1
+				seq1 = newSeq1
+				row = len(seq1)
+				fixAlignment = 0
+
+				while fixAlignment < align_length:
+					newSeq2 = newSeq2 + seq2[fixAlignment]
+					fixAlignment = fixAlignment + 1
+				seq2 = newSeq2
+				column = len(seq2)
+
+
+			elif (len(seq1) > align_length):
+				while fixAlignment < align_length:
+					newSeq1 = newSeq1 + seq1[fixAlignment]
+					fixAlignment = fixAlignment + 1
+				seq1 = newSeq1
+				row = len(seq1)
+				
+
+
+			elif (len(seq2) > align_length):
+				while fixAlignment < align_length:
+					newSeq2 = newSeq2 + seq2[fixAlignment]
+					fixAlignment = fixAlignment + 1
+				seq2 = newSeq2
+				column = len(seq2)
+
+			
+			row = row + 1
+			column = column + 1
+			seq1 = EMPTY + seq1
+			seq2 = EMPTY + seq2
+
+
+			#we are going to initialize the 2-d array with 0's. 
+			currSequence = [[0 for i in range(row)] for j in range(column)]
+			tracer = [[0 for i in range(row)] for j in range(column)]
+
+
+
+			#preset our indels
+			for i in range(column):
+				currSequence[i][0] = currRow 
+				currRow = currRow + INDEL
+				
+			for j in range(row):	
+				currSequence[0][j] = currColumn
+				currColumn = currColumn + INDEL	
+
+
+			#here is where our space & time complexity will be strongest.
+			#because i use 2 differente 2-d arrays my space and time will be running
+			#towards O(mn). I realized I shouldve instead used a tuple that couldve stored
+			#multiple values and wouldve cut the time in half, but this still completes with
+			#the time requirement. 
+			for j in range(column):
+				if j == 0:
+					y = 0
+					continue
+				y = y + 1
+
+				for i in range(row):
+					
+					if i == 0:
+						x = 0
+						continue
+					x = x + 1
+					
+					matchingPair = False
+					
+					if seq1[i] == seq2[j]:
+						matchingPair = True
+					
+					#these will calculate at a O(1) complexity
+					#because it will be going through each cell at a time
+					# with this, we know that with n and m the overall time
+					#turns out to be O(nm)
+					leftBox = ((currSequence[y][x - 1]) + INDEL)
+					topBox = ((currSequence[y - 1][x]) + INDEL)
+					diagonalBox = currSequence[y - 1][x - 1]
+					if bool(matchingPair):
+						diagonalBox = diagonalBox + MATCH 
+					else:
+						diagonalBox = diagonalBox + SUB
+					
+					if ((diagonalBox < leftBox) & (diagonalBox < topBox)):
+						currSequence[y][x] = diagonalBox
+						tracer[y][x] = diagonalDirection
+					elif (leftBox <= topBox):
+						currSequence[y][x] = leftBox
+						tracer[y][x] = leftDirection
+					else:
+						currSequence[y][x] = topBox
+						tracer[y][x] = upDirection	
+
+					
+			
+			score = currSequence[y][x]	
+			
+			
+
+			#We will trace back our path using these for loops
+			#I also began to realize that I couldve potentially
+			#done this process as well inside my other for loop
+			#and cut the time as well. This will still make my total
+			# Time and Complexity a O(mn)
+			y = column - 1
+			x = row - 1
+			rowWord = row - 1
+			columnWord = column - 1
+			for i in reversed(range(column)):
+				if ( i == 0):
+					continue
+				
+				
+
+				if (tracer[y][x] == 'l'):
+					pathi = seq1[i] + pathi
+					pathj = '-' + pathj
+					rowWord = rowWord - 1
+					x = x - 1
+
+				elif (tracer[y][x] == 'u'):
+					pathi = '-' + pathi
+					pathj = seq2[i] + pathj
+					columnWord = columnWord - 1
+					y = y - 1
+
+				
+				else:
+					
+					pathi = seq1[rowWord] + pathi
+					pathj = seq2[columnWord] + pathj
+					rowWord = rowWord - 1
+					columnWord = columnWord - 1
+					x = x - 1
+					y = y - 1
+
+			return {'align_cost':score, 'seqi_first100':pathi, 'seqj_first100':pathj}
+
+
+		#this is where we will begin to calculate the banded sequences
+		else:
+			EMPTY = '-'
+			row = len(seq1) 
+			column = len(seq2) 
+			currRow = 0
+			currColumn = 0
+			leftDirection = 'l'
+			upDirection = 'u'
+			diagonalDirection = 'd'
+			x = 0
+			y = 0
+			pathi = ''
+			pathj = ''
+			fixAlignment = 0
+			newSeq1 = ''
+			newSeq2 = ''
+			bandWidth = 7
+			inf = -1		
+			firstRow = [inf,inf, inf, 0, 5, 10, 15]	
+			bandedSeq = ''
+			
+
+			#This will be the same as above where we are going to check
+			#if the sequences passed in are the within the range of our
+			#alignlength
+			if ((len(seq1) > align_length) & (len(seq2) > align_length)):
+				while fixAlignment < align_length:
+					newSeq1 = newSeq1 + seq1[fixAlignment]
+					fixAlignment = fixAlignment + 1
+				seq1 = newSeq1
+				row = len(seq1)
+				fixAlignment = 0
+
+				while fixAlignment < align_length:
+					newSeq2 = newSeq2 + seq2[fixAlignment]
+					fixAlignment = fixAlignment + 1
+				seq2 = newSeq2
+				column = len(seq2)
+
+
+			elif (len(seq1) > align_length):
+				while fixAlignment < align_length:
+					newSeq1 = newSeq1 + seq1[fixAlignment]
+					fixAlignment = fixAlignment + 1
+				seq1 = newSeq1
+				row = len(seq1)
+				
+
+			elif (len(seq2) > align_length):
+				while fixAlignment < align_length:
+					newSeq2 = newSeq2 + seq2[fixAlignment]
+					fixAlignment = fixAlignment + 1
+				seq2 = newSeq2
+				column = len(seq2)
+
+			#this is going to help us create the shorter
+			#O(kn) time and space because we will be cutting
+			#the amount of characters we filter through
+			#we still know that everything is a
+			#O(1) but instead of it being m & n
+			# we will be using K which creates the band length
+			# and cuts our time to instead O(kn)
+			if(len(seq1) > len(seq2)):
+				bandedSeq = seq2
+				bandedLength = len(bandedSeq)
+			else:
+				bandedSeq = seq1
+				bandedLength = len(bandedSeq)
+
+			#we use our K (which is 7) to cut the max size of the array and make it 
+			#so we only calculate and look at a tape/band of 7. This significantly 
+			#cuts the time down compared to our unbanded and allows us to go through
+			#larger lengths and still be faster
+			currSequence = [[0 for i in range(bandWidth)] for j in range(bandedLength)]
+			tracer = [[0 for i in range(bandWidth)] for j in range(bandedLength)]
+
+
+
+			print(currSequence)
+
+			#We can loop through everything quicker because 
+			#we wont have as many columns to calculate through
+			#and this will help us maintain a O(kn)
+			for j in range(bandedLength):
+				for i in range(bandWidth):
+					if(j == 0):
+						for k in range(bandWidth):
+							currSequence[0][k] = firstRow[k]
+
+						matchingPair = False
+					
+						if seq1[i] == seq2[j]:
+							matchingPair = True
+
+						leftBox = ((currSequence[y][x - 1]) + INDEL)
+						topBox = ((currSequence[y - 1][x + 1]) + INDEL)
+						diagonalBox = currSequence[y - 1][x]
+
+						if bool(matchingPair):
+							diagonalBox = diagonalBox + MATCH 
+						else:
+							diagonalBox = diagonalBox + SUB
+						
+						if ((diagonalBox < leftBox) & (diagonalBox < topBox)):
+							currSequence[y][x] = diagonalBox
+							tracer[y][x] = diagonalDirection
+						elif (leftBox <= topBox):
+							currSequence[y][x] = leftBox
+							tracer[y][x] = leftDirection
+						else:
+							currSequence[y][x] = topBox
+							tracer[y][x] = upDirection	
+
+			score = currSequence[y][x]	
+
+			#even with a seperate for loop that we 
+			# will still be quicker than the unbanded 
+			# with less items to calculate		
+			y = column - 1
+			x = row - 1
+			rowWord = row - 1
+			columnWord = column - 1
+			for i in reversed(range(bandWidth)):
+				if ( i == 0):
+					continue
+
+				if (tracer[y][x] == 'l'):
+					pathi = seq1[i] + pathi
+					pathj = '-' + pathj
+					rowWord = rowWord - 1
+					x = x - 1
+
+				elif (tracer[y][x] == 'u'):
+					pathi = '-' + pathi
+					pathj = seq2[i] + pathj
+					columnWord = columnWord - 1
+					y = y - 1
+
+				
+				else:
+					
+					pathi = seq1[rowWord] + pathi
+					pathj = seq2[columnWord] + pathj
+					rowWord = rowWord - 1
+					columnWord = columnWord - 1
+					x = x - 1
+					y = y - 1
+
+			return {'align_cost':score, 'seqi_first100':pathi, 'seqj_first100':pathj}
+
+
+
+ 
+		 	
+
+
